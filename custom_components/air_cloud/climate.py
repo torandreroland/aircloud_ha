@@ -1,8 +1,8 @@
 import asyncio
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (FAN_AUTO, FAN_HIGH,
+from homeassistant.components.climate.const import (FAN_AUTO, FAN_TOP,
                                                     FAN_LOW, FAN_MEDIUM,
-                                                    FAN_MIDDLE, SWING_OFF,
+                                                    FAN_HIGH, SWING_OFF,
                                                     SWING_VERTICAL,
                                                     SWING_HORIZONTAL,
                                                     SWING_BOTH)
@@ -15,8 +15,8 @@ SUPPORT_FAN = [
     FAN_AUTO,
     FAN_LOW,
     FAN_MEDIUM,
-    FAN_MIDDLE,
-    FAN_HIGH
+    FAN_HIGH,
+    FAN_TOP
 ]
 SUPPORT_SWING = [
     SWING_OFF,
@@ -110,7 +110,7 @@ class AirCloudClimateEntity(ClimateEntity):
 
     @property
     def target_temperature_step(self):
-        return 0.5
+        return 1
 
     @property
     def max_temp(self):
@@ -154,9 +154,9 @@ class AirCloudClimateEntity(ClimateEntity):
         elif self._fan_speed == "LV2":
             return FAN_MEDIUM
         elif self._fan_speed == "LV3":
-            return FAN_MIDDLE
-        elif self._fan_speed == "LV4":
             return FAN_HIGH
+        elif self._fan_speed == "LV4":
+            return FAN_TOP
         else:
             return FAN_AUTO
 
@@ -244,11 +244,11 @@ class AirCloudClimateEntity(ClimateEntity):
             self._fan_speed = "AUTO"
         elif fan_mode == FAN_LOW:
             self._fan_speed = "LV1"
-        elif fan_mode == FAN_MIDDLE:
-            self._fan_speed = "LV2"
         elif fan_mode == FAN_MEDIUM:
-            self._fan_speed = "LV3"
+            self._fan_speed = "LV2"
         elif fan_mode == FAN_HIGH:
+            self._fan_speed = "LV3"
+        elif fan_mode == FAN_TOP:
             self._fan_speed = "LV4"
         else:
             self._fan_speed = "AUTO"
@@ -294,6 +294,9 @@ class AirCloudClimateEntity(ClimateEntity):
 
         if self._mode == "FAN":
             target_temp = 0
+        elif self._mode == "AUTO":
+            # Clamp the value between -3 and +3 after subtracting 25
+            target_temp = max(-3, min(3, target_temp - 25))
 
         await self._api.execute_command(self._id, self._family_id, self._power, target_temp, self._mode,
                                         self._fan_speed, self._fan_swing, self._humidity)
@@ -304,7 +307,10 @@ class AirCloudClimateEntity(ClimateEntity):
     def __update_data(self, climate_data):
         self._power = climate_data["power"]
         self._mode = climate_data["mode"]
-        self._target_temp = climate_data["iduTemperature"]
+        if climate_data["mode"] == "AUTO":
+            self._target_temp = climate_data["iduTemperature"] + 25
+        else:
+            self._target_temp = climate_data["iduTemperature"]
 
         self._room_temp = climate_data.get("roomTemperature")
         if self._room_temp is not None and self._temp_adjust is not None:
