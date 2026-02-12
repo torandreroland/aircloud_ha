@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from aiohttp import WSMsgType
 
-from .const import HOST_API, URN_AUTH, URN_WHO, URN_WSS, URN_CONTROL, URN_REFRESH_TOKEN, URN_ENERGY_CONSUMPTION_SUMMARY, URN_RAC_CONFIGURATION
+from .const import HOST_API, URN_AUTH, URN_WHO, URN_WSS, URN_CONTROL, URN_REFRESH_TOKEN, URN_ENERGY_CONSUMPTION_SUMMARY, URN_RAC_CONFIGURATION, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class AirCloudApi:
 
     async def __authenticate(self):
         authorization = {"email": self._login, "password": self._password}
-        async with self._session.post(HOST_API + URN_AUTH, json=authorization) as response:
+        async with self._session.post(HOST_API + URN_AUTH, json=authorization, headers={"User-Agent": USER_AGENT}) as response:
             await self.__update_token_data(await response.json())
         self._last_token_update = datetime.now()
 
@@ -47,7 +47,8 @@ class AirCloudApi:
             async with self._session.post(
                 HOST_API + URN_REFRESH_TOKEN,
                 headers={"Authorization": f"Bearer {self._ref_token}",
-                         "isRefreshToken": "true"}
+                         "isRefreshToken": "true",
+                         "User-Agent": USER_AGENT}
             ) as response:
                 await self.__update_token_data(await response.json())
             self._last_token_update = now_datetime
@@ -90,7 +91,7 @@ class AirCloudApi:
         await self.__refresh_token()
 
         # Открываем новое соединение
-        async with self._session.ws_connect(URN_WSS, timeout=60) as ws:
+        async with self._session.ws_connect(URN_WSS, timeout=60, headers={"User-Agent": USER_AGENT}) as ws:
             connection_string = (
                 "CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n"
                 "Authorization:Bearer {}\n\n\0\n"
@@ -119,7 +120,7 @@ class AirCloudApi:
                             await ws.close()
 
                             await self.__refresh_token(forced=True)
-                            ws = await self._session.ws_connect(URN_WSS, timeout=60)
+                            ws = await self._session.ws_connect(URN_WSS, timeout=60, headers={"User-Agent": USER_AGENT})
                             connection_string = (
                                 "CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n"
                                 "Authorization:Bearer {}\n\n\0\n"
@@ -191,7 +192,7 @@ class AirCloudApi:
             _LOGGER.debug("AirCloud command response: %s", await response.text())
 
     def __create_headers(self):
-        return {"Authorization": f"Bearer {self._token}"}
+        return {"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT}
 
     async def close_session(self):
         await self._session.close()
