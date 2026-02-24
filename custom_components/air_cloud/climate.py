@@ -396,8 +396,6 @@ class AirCloudClimateEntity(ClimateEntity):
         else:
             self._target_temp = climate_data["iduTemperature"]
 
-        self._room_temp = climate_data["roomTemperature"]
-
         # Get adjustment from shared data
         adjust_data = self._hass.data[DOMAIN].get(CONF_TEMP_ADJUST, {})
         temp_adjust = adjust_data.get(self._id)
