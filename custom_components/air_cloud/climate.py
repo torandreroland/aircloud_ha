@@ -14,7 +14,6 @@ from homeassistant.components.climate.const import (
     SWING_HORIZONTAL,
     SWING_BOTH,
 )
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.components.climate.const import HVACMode, ClimateEntityFeature
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
